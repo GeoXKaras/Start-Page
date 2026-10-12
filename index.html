@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Start Page</title>
+<style>
+  /* Layout: greeting and clock on top, then two columns.
+     Left: quick links and weather. Right: Greek headlines. Stacks on narrow screens.
+     Colors: only the browser's own system colors, so light/dark and defaults follow the browser. */
+  :root {
+    color-scheme: light dark;
+    --bg: Canvas;
+    --fg: CanvasText;
+    --muted: GrayText;
+    --link: LinkText;
+    --line: GrayText;                                              /* fallback */
+    --line: color-mix(in srgb, CanvasText 18%, Canvas);
+    --surface: Canvas;                                             /* fallback */
+    --surface: color-mix(in srgb, CanvasText 5%, Canvas);
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --gap: 1.75rem;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 1.0625rem/1.6 var(--font);
+    padding-inline: 1.25rem;
+    padding-block: 2.5rem 3.5rem;
+  }
+  a { color: var(--link); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .page { max-width: 72rem; margin-inline: auto; display: grid; gap: 2.25rem; }
+
+  .top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 2rem; }
+  .greeting { margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+  .when { margin: 0; text-align: right; }
+  .clock { display: block; font-size: 1.75rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .date { color: var(--muted); }
+
+  .cols { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 56rem) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); } }
+  .stack { display: grid; gap: var(--gap); min-width: 0; }
+
+  section { min-width: 0; }
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+  h2 { margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .head a { font-size: 0.875rem; }
+
+  /* Daily quote */
+  .quote { margin: 0; padding-block: 1.25rem; border-block: 1px solid var(--line); max-width: 52rem; }
+  .quote blockquote { margin: 0; font-size: clamp(1.25rem, 2.6vw, 1.75rem); line-height: 1.4; font-weight: 500; text-wrap: balance; }
+  .quote figcaption { margin-top: 0.5rem; color: var(--muted); font-size: 0.9375rem; }
+
+  /* Quick links, grouped */
+  .groups { display: grid; gap: 1.5rem; }
+  .group h3 { margin: 0 0 0.625rem; font-size: 1rem; font-weight: 600; }
+  .links { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
+  .links a {
+    display: grid; justify-items: center; align-content: center; gap: 0.5rem; padding: 1rem 0.5rem; min-height: 6.5rem;
+    border: 1px solid var(--line); border-radius: 0.625rem; background: var(--surface);
+    color: var(--fg); text-decoration: none; text-align: center; font-size: 0.9375rem;
+  }
+  .links a:hover { border-color: var(--link); }
+  .mono { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); font-weight: 650; font-size: 1.25rem; color: var(--link); }
+  .links span:last-child { overflow-wrap: anywhere; }
+
+  /* Cards for the two live widgets */
+  .card { border: 1px solid var(--line); border-radius: 0.625rem; background: var(--surface); padding: 1.25rem; }
+  .status { margin: 0; color: var(--muted); }
+
+  /* Weather */
+  .now { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1rem; }
+  .temp { font-size: 3rem; font-weight: 650; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cond { font-size: 1.125rem; }
+  .facts { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.9375rem; }
+  .days { list-style: none; margin: 1rem 0 0; padding: 1rem 0 0; border-top: 1px solid var(--line); display: grid; gap: 0.5rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .days li { display: grid; gap: 0.125rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .days .d { font-weight: 600; font-size: 0.875rem; }
+  .days .r { color: var(--muted); font-size: 0.8125rem; }
+  .days .lo { color: var(--muted); }
+  @media (max-width: 30rem) { .days { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .stamp { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.8125rem; }
+
+  /* News */
+  .tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .tabs button {
+    font: inherit; font-size: 0.9375rem; padding: 0.375rem 0.875rem; cursor: pointer;
+    color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 999px;
+  }
+  .tabs button[aria-pressed="true"] { border-color: var(--link); color: var(--link); font-weight: 600; }
+  .heads { list-style: none; margin: 0; padding: 0; display: grid; }
+  .heads li { padding-block: 0.75rem; border-top: 1px solid var(--line); }
+  .heads li:first-child { border-top: 0; padding-top: 0; }
+  .heads a { color: var(--fg); text-decoration: none; font-weight: 550; text-wrap: pretty; }
+  .heads a:hover { color: var(--link); text-decoration: underline; }
+  .meta { display: block; color: var(--muted); font-size: 0.875rem; margin-top: 0.125rem; }
+
+  .upd { color: var(--muted); font-size: 0.8125rem; }
+  .foot { color: var(--muted); font-size: 0.8125rem; margin: 0; }
+  @media (prefers-reduced-motion: no-preference) { .links a { transition: border-color 0.15s; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <h1 class="greeting" id="greeting">Hello</h1>
+    <p class="when"><time class="clock" id="clock"></time><span class="date" id="date"></span></p>
+  </header>
+
+  <figure class="quote" id="quote" aria-label="Quote of the day">
+    <blockquote id="quote-text"></blockquote>
+    <figcaption id="quote-by"></figcaption>
+  </figure>
+
+  <div class="cols">
+    <div class="stack">
+      <section aria-labelledby="h-links">
+        <div class="head"><h2 id="h-links">Quick links</h2></div>
+        <div class="groups" id="groups"></div>
+      </section>
+
+      <section aria-labelledby="h-weather">
+        <div class="head">
+          <h2 id="h-weather">Weather · Thessaloniki</h2>
+          <a href="https://www.meteo.gr/" target="_blank" rel="noopener noreferrer">meteo.gr</a>
+        </div>
+        <div class="card" id="weather"><p class="status">Loading the forecast…</p></div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section aria-labelledby="h-gr">
+        <div class="head"><h2 id="h-gr">Greek news</h2><span class="upd" id="upd-gr"></span></div>
+        <div class="card">
+          <div class="tabs" id="tabs-gr"></div>
+          <div id="news-gr"><p class="status">Loading headlines…</p></div>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-world">
+        <div class="head"><h2 id="h-world">World news</h2><span class="upd" id="upd-world"></span></div>
+        <div class="card">
+          <div class="tabs" id="tabs-world"></div>
+          <div id="news-world"><p class="status">Loading headlines…</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <p class="foot">Weather from Open-Meteo. Headlines are read from each publisher's public RSS feed. Reuters no longer offers a public feed, so it is not listed.</p>
+</div>
+
+<script>
+/* ---- EDIT HERE: your quick links, in groups ---- */
+var LINK_GROUPS = [
+  { title: "Google", links: [
+    { name: "YouTube",   url: "https://www.youtube.com/" },
+    { name: "Gmail",     url: "https://mail.google.com/" },
+    { name: "Drive",     url: "https://drive.google.com/" },
+    { name: "Gemini",    url: "https://gemini.google.com/" },
+    { name: "NotebookLM", url: "https://notebooklm.google.com/" }
+  ]},
+  { title: "AI tools", links: [
+    { name: "Claude",     url: "https://claude.ai/" },
+    { name: "Perplexity", url: "https://www.perplexity.ai/" }
+  ]},
+  { title: "Sport", links: [
+    { name: "Sport24", url: "https://www.sport24.gr/" }
+  ]},
+  { title: "Other", links: [
+    { name: "Calendar", url: "https://calendar.google.com/" },
+    { name: "Maps",     url: "https://maps.google.com/" },
+    { name: "GitHub",   url: "https://github.com/" },
+    { name: "news247",  url: "https://www.news247.gr/" }
+  ]}
+];
+
+/* ---- EDIT HERE: quotes. One shows per day, in this order, then it repeats. ---- */
+var QUOTES = [
+  { t: "Price is what you pay. Value is what you get.", by: "Warren Buffett", tag: "Investing" },
+  { t: "The only way to do great work is to love what you do.", by: "Steve Jobs", tag: "Work" },
+  { t: "It is not that we have a short time to live, but that we waste much of it.", by: "Seneca", tag: "Life" },
+  { t: "The four most dangerous words in investing are: this time it's different.", by: "Sir John Templeton", tag: "Investing" },
+  { t: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", by: "Will Durant", tag: "Work" },
+  { t: "What stands in the way becomes the way.", by: "Marcus Aurelius", tag: "Life" },
+  { t: "The investor's chief problem, and even his worst enemy, is likely to be himself.", by: "Benjamin Graham", tag: "Investing" },
+  { t: "Plans are worthless, but planning is everything.", by: "Dwight D. Eisenhower", tag: "Work" },
+  { t: "Fall seven times, stand up eight.", by: "Japanese proverb", tag: "Life" },
+  { t: "Don't look for the needle in the haystack. Just buy the haystack.", by: "John Bogle", tag: "Investing" },
+  { t: "Make each day your masterpiece.", by: "John Wooden", tag: "Work" },
+  { t: "He who has a why to live can bear almost any how.", by: "Friedrich Nietzsche", tag: "Life" },
+  { t: "Beware of little expenses. A small leak will sink a great ship.", by: "Benjamin Franklin", tag: "Investing" },
+  { t: "Well begun is half done.", by: "Greek proverb", tag: "Work" },
+  { t: "Your time is limited, so don't waste it living someone else's life.", by: "Steve Jobs", tag: "Life" },
+  { t: "Be fearful when others are greedy, and greedy when others are fearful.", by: "Warren Buffett", tag: "Investing" },
+  { t: "Do what you can, with what you have, where you are.", by: "Attributed to Theodore Roosevelt", tag: "Work" },
+  { t: "The journey of a thousand miles begins with a single step.", by: "Lao Tzu", tag: "Life" },
+  { t: "In the short run, the market is a voting machine. In the long run, it is a weighing machine.", by: "Benjamin Graham", tag: "Investing" },
+  { t: "It does not matter how slowly you go as long as you do not stop.", by: "Attributed to Confucius", tag: "Work" },
+  { t: "Nothing in life is to be feared, it is only to be understood.", by: "Marie Curie", tag: "Life" },
+  { t: "Diversification is a protection against ignorance.", by: "Warren Buffett", tag: "Investing" },
+  { t: "Whether you think you can, or you think you can't, you're right.", by: "Attributed to Henry Ford", tag: "Work" },
+  { t: "Waste no more time arguing about what a good man should be. Be one.", by: "Marcus Aurelius", tag: "Life" },
+  { t: "An investment in knowledge pays the best interest.", by: "Attributed to Benjamin Franklin", tag: "Investing" },
+  { t: "Know thyself.", by: "Inscription at Delphi", tag: "Work" },
+  { t: "I learned that courage was not the absence of fear, but the triumph over it.", by: "Nelson Mandela", tag: "Life" },
+  { t: "Moderation is best.", by: "Cleobulus of Lindos", tag: "Investing" },
+  { t: "Opportunities multiply as they are seized.", by: "Attributed to Sun Tzu", tag: "Work" },
+  { t: "The best time to plant a tree was twenty years ago. The second best time is now.", by: "Proverb", tag: "Life" }
+];
+
+/* ---- EDIT HERE: news sources (publisher RSS feeds) ---- */
+var GREEK_SOURCES = [
+  { name: "Kathimerini", feed: "https://feeds.feedburner.com/kathimerini/DJpy" },
+  { name: "To Vima",     feed: "https://www.tovima.gr/feed/" }
+];
+var WORLD_SOURCES = [
+  { name: "BBC",      feed: "https://feeds.bbci.co.uk/news/world/rss.xml" },
+  { name: "CNN",      feed: "http://rss.cnn.com/rss/edition_world.rss" },
+  { name: "Guardian", feed: "https://www.theguardian.com/world/rss" }
+];
+
+/* Headlines shown in each news widget, in every tab */
+var MAX_HEADLINES = 4;
+
+/* Thessaloniki */
+var LAT = 40.64, LON = 22.94;
+var WEATHER_URL = "https://api.open-meteo.com/v1/forecast?latitude=" + LAT + "&longitude=" + LON +
+  "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m" +
+  "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+  "&timezone=Europe%2FAthens&forecast_days=5";
+
+var WMO = {
+  0: "Clear sky", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast",
+  45: "Fog", 48: "Freezing fog",
+  51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle", 56: "Freezing drizzle", 57: "Freezing drizzle",
+  61: "Light rain", 63: "Rain", 65: "Heavy rain", 66: "Freezing rain", 67: "Freezing rain",
+  71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
+  80: "Rain showers", 81: "Rain showers", 82: "Heavy showers", 85: "Snow showers", 86: "Snow showers",
+  95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Thunderstorm with hail"
+};
+
+function $(id) { return document.getElementById(id); }
+
+function make(tag, className, text) {
+  var node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function saveCache(key, value) {
+  try { localStorage.setItem(key, JSON.stringify({ saved: Date.now(), value: value })); } catch (e) {}
+}
+function readCache(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
+}
+
+function fetchJson(url) {
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, 6000);
+  return fetch(url, { signal: controller.signal })
+    .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+    .finally(function () { clearTimeout(timer); });
+}
+
+function clock(ms) {
+  return new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ---- Greeting, clock, date ---- */
+function tick() {
+  var now = new Date(), h = now.getHours();
+  var hello = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  $("greeting").textContent = hello;
+  $("clock").textContent = clock(now.getTime());
+  $("date").textContent = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+/* ---- Quote of the day ---- */
+function renderQuote() {
+  var d = new Date();
+  var day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  var q = QUOTES[day % QUOTES.length];
+  $("quote-text").textContent = "\u201C" + q.t + "\u201D";
+  $("quote-by").textContent = q.by + " \u00B7 " + q.tag;
+}
+
+/* ---- Quick links ---- */
+function renderLinks() {
+  var wrap = $("groups");
+  LINK_GROUPS.forEach(function (group) {
+    var box = make("div", "group");
+    box.appendChild(make("h3", "", group.title));
+    var list = make("ul", "links");
+    group.links.forEach(function (item) {
+      var li = make("li");
+      var a = make("a");
+      a.href = item.url;
+      a.appendChild(make("span", "mono", item.name.charAt(0).toUpperCase()));
+      a.appendChild(make("span", "", item.name));
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    box.appendChild(list);
+    wrap.appendChild(box);
+  });
+}
+
+/* ---- Weather ---- */
+function renderWeather(data, saved, stale) {
+  var box = $("weather");
+  box.textContent = "";
+  var c = data.current, d = data.daily;
+
+  var now = make("div", "now");
+  now.appendChild(make("span", "temp", Math.round(c.temperature_2m) + "°C"));
+  now.appendChild(make("span", "cond", WMO[c.weather_code] || "—"));
+  box.appendChild(now);
+  box.appendChild(make("p", "facts",
+    "Feels like " + Math.round(c.apparent_temperature) + "° · Humidity " + Math.round(c.relative_humidity_2m) +
+    "% · Wind " + Math.round(c.wind_speed_10m) + " km/h"));
+
+  var days = make("ul", "days");
+  d.time.forEach(function (day, i) {
+    var li = make("li");
+    var label = i === 0 ? "Today" : new Date(day + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" });
+    li.appendChild(make("span", "d", label));
+    li.appendChild(make("span", "", Math.round(d.temperature_2m_max[i]) + "°"));
+    li.appendChild(make("span", "lo", Math.round(d.temperature_2m_min[i]) + "°"));
+    li.appendChild(make("span", "r", d.precipitation_probability_max[i] == null ? "" : d.precipitation_probability_max[i] + "% rain"));
+    days.appendChild(li);
+  });
+  box.appendChild(days);
+
+  box.appendChild(make("p", "stamp", (stale ? "Offline. Showing the forecast saved at " : "Updated ") + clock(saved)));
+}
+
+function loadWeather() {
+  fetchJson(WEATHER_URL)
+    .then(function (data) {
+      saveCache("weather", data);
+      renderWeather(data, Date.now(), false);
+    })
+    .catch(function () {
+      var cached = readCache("weather");
+      if (cached) { renderWeather(cached.value, cached.saved, true); return; }
+      var box = $("weather");
+      box.textContent = "";
+      box.appendChild(make("p", "status", "The forecast could not be loaded. Check your connection, or open meteo.gr."));
+    });
+}
+
+/* ---- News ---- */
+function ago(ms) {
+  if (!ms) return "";
+  var min = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (min < 60) return min + " min ago";
+  if (min < 1440) return Math.round(min / 60) + " h ago";
+  return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/* Way 1: rss2json turns the feed into JSON and allows requests from a local file. */
+function viaRss2Json(feedUrl) {
+  return fetchJson("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feedUrl)).then(function (data) {
+    if (data.status !== "ok" || !data.items || !data.items.length) throw new Error("empty feed");
+    return data.items.map(function (i) {
+      return { title: i.title, link: i.link, time: Date.parse(String(i.pubDate).replace(" ", "T") + "Z") || 0 };
+    });
+  });
+}
+
+/* Way 2: fetch the raw feed XML through a CORS relay and read it in the browser. */
+function viaRelay(feedUrl) {
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, 6000);
+  return fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(feedUrl), { signal: controller.signal })
+    .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.text(); })
+    .finally(function () { clearTimeout(timer); })
+    .then(function (text) {
+      var xml = new DOMParser().parseFromString(text, "text/xml");
+      var nodes = xml.querySelectorAll("item, entry");
+      if (!nodes.length) throw new Error("no items");
+      return Array.prototype.map.call(nodes, function (n) {
+        var t = n.querySelector("title"), l = n.querySelector("link"), d = n.querySelector("pubDate, published, updated");
+        var link = l ? (l.getAttribute("href") || l.textContent) : "";
+        return { title: t ? t.textContent.trim() : "", link: link.trim(), time: d ? (Date.parse(d.textContent) || 0) : 0 };
+      }).filter(function (i) { return i.title && i.link; });
+    });
+}
+
+function loadFeed(source) {
+  return viaRss2Json(source.feed).catch(function () { return viaRelay(source.feed); }).then(function (items) {
+    return items.map(function (i) { i.source = source.name; return i; });
+  });
+}
+
+function mergeLatest(lists) {
+  var all = [].concat.apply([], lists);
+  all.sort(function (a, b) { return b.time - a.time; });
+  return all;
+}
+
+function createNewsWidget(cfg) {
+  var tabsEl = $(cfg.tabs), bodyEl = $(cfg.body), updEl = $(cfg.upd);
+  var tabs = [{ id: "all", name: "Latest", sources: cfg.sources }].concat(cfg.sources.map(function (s) {
+    return { id: s.name, name: s.name, sources: [s] };
+  }));
+  var storeKey = "tab-" + cfg.id, active = 0;
+
+  function paint(items, saved, stale) {
+    bodyEl.textContent = "";
+    var list = make("ul", "heads");
+    items.forEach(function (item) {
+      var li = make("li");
+      var a = make("a", "", item.title);
+      a.href = item.link;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      li.appendChild(a);
+      var when = ago(item.time);
+      li.appendChild(make("span", "meta", item.source + (when ? " · " + when : "")));
+      list.appendChild(li);
+    });
+    bodyEl.appendChild(list);
+    updEl.textContent = (stale ? "Saved " : "Updated ") + clock(saved);
+  }
+
+  function fail(tab) {
+    bodyEl.textContent = "";
+    var p = make("p", "status", "Headlines could not be loaded. Check your connection and ");
+    var a = make("a", "", "reload");
+    a.href = "";
+    p.appendChild(a);
+    p.appendChild(document.createTextNode("."));
+    bodyEl.appendChild(p);
+    updEl.textContent = "";
+  }
+
+  function select(tab) {
+    Array.prototype.forEach.call(tabsEl.children, function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.id === tab.id));
+    });
+    try { localStorage.setItem(storeKey, tab.id); } catch (e) {}
+    bodyEl.textContent = "";
+    bodyEl.appendChild(make("p", "status", "Loading headlines…"));
+    updEl.textContent = "";
+
+    var run = ++active;
+    var lists = {}, pending = tab.sources.length, shown = false;
+
+    /* Take the newest headline from each source in turn until there are 4. */
+    function pick() {
+      var queues = Object.keys(lists).map(function (k) {
+        return lists[k].slice().sort(function (a, b) { return b.time - a.time; });
+      });
+      var chosen = [];
+      for (var round = 0; chosen.length < MAX_HEADLINES; round++) {
+        var added = false;
+        queues.forEach(function (q) {
+          if (chosen.length < MAX_HEADLINES && q[round]) { chosen.push(q[round]); added = true; }
+        });
+        if (!added) break;
+      }
+      return chosen.sort(function (a, b) { return b.time - a.time; });
+    }
+
+    function show() {
+      if (run !== active) return;
+      var items = pick();
+      shown = true;
+      saveCache(cfg.id + "-" + tab.id, items);
+      paint(items, Date.now(), false);
+    }
+
+    function done() {
+      pending--;
+      if (run !== active || pending > 0 || shown) return;
+      var cached = readCache(cfg.id + "-" + tab.id);
+      if (cached) paint(cached.value, cached.saved, true);
+      else fail(tab);
+    }
+
+    tab.sources.forEach(function (source) {
+      loadFeed(source).then(function (items) {
+        if (items && items.length) { lists[source.name] = items; show(); }
+        done();
+      }, done);
+    });
+  }
+
+  var chosen = null;
+  try { chosen = localStorage.getItem(storeKey); } catch (e) {}
+  var current = tabs.filter(function (t) { return t.id === chosen; })[0] || tabs[0];
+  tabs.forEach(function (tab) {
+    var b = make("button", "", tab.name);
+    b.type = "button";
+    b.dataset.id = tab.id;
+    b.addEventListener("click", function () { select(tab); });
+    tabsEl.appendChild(b);
+  });
+  select(current);
+}
+
+tick();
+setInterval(tick, 30000);
+renderQuote();
+renderLinks();
+loadWeather();
+createNewsWidget({ id: "gr", sources: GREEK_SOURCES, tabs: "tabs-gr", body: "news-gr", upd: "upd-gr" });
+createNewsWidget({ id: "world", sources: WORLD_SOURCES, tabs: "tabs-world", body: "news-world", upd: "upd-world" });
+</script>
+</body>
+</html>
