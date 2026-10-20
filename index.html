@@ -99,6 +99,23 @@
   .meta { display: block; color: var(--muted); font-size: 0.875rem; margin-top: 0.125rem; }
 
   .upd { color: var(--muted); font-size: 0.8125rem; }
+  /* Expandable cinema widget */
+  .cinema { padding: 0; }
+  .cinema summary { cursor: pointer; padding: 1rem 1.25rem; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; list-style: none; border-radius: 0.625rem; }
+  .cinema summary::-webkit-details-marker { display: none; }
+  .cinema summary:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .cinema .sum-title { font-weight: 600; }
+  .cinema .sum-hint { color: var(--muted); font-size: 0.875rem; white-space: nowrap; }
+  .cinema .sum-hint::before { content: "Show films"; }
+  .cinema[open] .sum-hint::before { content: "Hide films"; }
+  .cinema .sum-hint::after { content: " \25BE"; }
+  .cinema[open] .sum-hint::after { content: " \25B4"; }
+  .cinema-body { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+  .films { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.5rem; }
+  .films li { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+  .films .t { min-width: 0; overflow-wrap: anywhere; }
+  .films .r { color: var(--muted); font-size: 0.8125rem; border: 1px solid var(--line); border-radius: 0.25rem; padding: 0 0.375rem; white-space: nowrap; }
+  .cinema-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.9375rem; margin-top: 0.5rem; }
   .foot { color: var(--muted); font-size: 0.8125rem; margin: 0; }
   @media (prefers-reduced-motion: no-preference) { .links a { transition: border-color 0.15s; } }
 </style>
@@ -129,6 +146,18 @@
           <a href="https://www.meteo.gr/" target="_blank" rel="noopener noreferrer">meteo.gr</a>
         </div>
         <div class="card" id="weather"><p class="status">Loading the forecast…</p></div>
+      </section>
+
+      <section aria-labelledby="h-cinema">
+        <div class="head"><h2 id="h-cinema">Cinema · Thessaloniki</h2></div>
+        <details class="card cinema" id="cinema">
+          <summary><span class="sum-title">Village Cinemas: now playing</span><span class="sum-hint"></span></summary>
+          <div class="cinema-body">
+            <p class="status" id="cinema-note"></p>
+            <ul class="films" id="films"></ul>
+            <div class="cinema-links" id="cinema-links"></div>
+          </div>
+        </details>
       </section>
     </div>
 
@@ -227,6 +256,34 @@ var WORLD_SOURCES = [
 /* Headlines shown in each news widget, in every tab */
 var MAX_HEADLINES = 4;
 
+/* ---- EDIT HERE: cinema snapshot. Village Cinemas has no public feed, so this list is
+   copied from villagecinemas.gr/el/paizontai-tora/ on the date below. Ask Claude to refresh it. ---- */
+var CINEMA = {
+  checked: "12 Oct 2026",
+  films: [
+    { t: "Ο Οδυσσέας (The Odyssey)",                       r: "K15" },
+    { t: "Spider-Man: Καινούργια Μέρα",                    r: "K12" },
+    { t: "Εκδικητές: Η Τελευταία Πράξη (Encore)",          r: "K12" },
+    { t: "Resident Evil",                                   r: "K18" },
+    { t: "Ντίγκερ (Digger)",                                r: "K15" },
+    { t: "Primetime",                                       r: "K15" },
+    { t: "The Social Reckoning",                            r: "K12" },
+    { t: "Άλλη Μαμά (Other Mommy)",                         r: "K15" },
+    { t: "Το Ημερολόγιο της Βέριτι (Verity)",               r: "K15" },
+    { t: "Στην Καρδιά του Κτήνους (Heart of the Beast)",    r: "K12" },
+    { t: "Always Lalisa",                                   r: "K15" },
+    { t: "Ο Καραγκιόζης Δάσκαλος",                          r: "K" },
+    { t: "Ξεχασμένο Νησί (μεταγλωττισμένο)",                r: "K" },
+    { t: "Ο Tad και το Μαγικό Λυχνάρι (μεταγλωττισμένο)",   r: "K" },
+    { t: "Minions & Τέρατα (μεταγλωττισμένο)",              r: "K" }
+  ],
+  links: [
+    { name: "Mediterranean Cosmos",  url: "https://www.villagecinemas.gr/el/kinimatografoi/village-med-cosmos/" },
+    { name: "Makedonia Mall",        url: "https://www.villagecinemas.gr/el/kinimatografoi/village-makedonia-mall/" },
+    { name: "Showtimes and tickets", url: "https://www.villagecinemas.gr/el/paizontai-tora/" }
+  ]
+};
+
 /* Thessaloniki */
 var LAT = 40.64, LON = 22.94;
 var WEATHER_URL = "https://api.open-meteo.com/v1/forecast?latitude=" + LAT + "&longitude=" + LON +
@@ -308,6 +365,27 @@ function renderLinks() {
     });
     box.appendChild(list);
     wrap.appendChild(box);
+  });
+}
+
+/* ---- Cinema ---- */
+function renderCinema() {
+  $("cinema-note").textContent = "Films playing across Village Cinemas on " + CINEMA.checked +
+    ". Check the Thessaloniki venues below for what is on at Mediterranean Cosmos and Makedonia Mall, and for times.";
+  var list = $("films");
+  CINEMA.films.forEach(function (film) {
+    var li = make("li");
+    li.appendChild(make("span", "t", film.t));
+    li.appendChild(make("span", "r", film.r));
+    list.appendChild(li);
+  });
+  var links = $("cinema-links");
+  CINEMA.links.forEach(function (item) {
+    var a = make("a", "", item.name);
+    a.href = item.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    links.appendChild(a);
   });
 }
 
@@ -510,6 +588,7 @@ tick();
 setInterval(tick, 30000);
 renderQuote();
 renderLinks();
+renderCinema();
 loadWeather();
 createNewsWidget({ id: "gr", sources: GREEK_SOURCES, tabs: "tabs-gr", body: "news-gr", upd: "upd-gr" });
 createNewsWidget({ id: "world", sources: WORLD_SOURCES, tabs: "tabs-world", body: "news-world", upd: "upd-world" });
