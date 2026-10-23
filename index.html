@@ -256,6 +256,9 @@ var WORLD_SOURCES = [
 /* Headlines shown in each news widget, in every tab */
 var MAX_HEADLINES = 4;
 
+/* Reload the page when the tab comes back after being hidden this long (minutes) */
+var RELOAD_AFTER_MINUTES = 30;
+
 /* ---- EDIT HERE: cinema snapshot. Village Cinemas has no public feed, so this list is
    copied from villagecinemas.gr/el/paizontai-tora/ on the date below. Ask Claude to refresh it. ---- */
 var CINEMA = {
@@ -592,6 +595,14 @@ renderCinema();
 loadWeather();
 createNewsWidget({ id: "gr", sources: GREEK_SOURCES, tabs: "tabs-gr", body: "news-gr", upd: "upd-gr" });
 createNewsWidget({ id: "world", sources: WORLD_SOURCES, tabs: "tabs-world", body: "news-world", upd: "upd-world" });
+
+/* Start pages stay open for hours. Reload when the tab comes back after a long time away. */
+var hiddenAt = 0;
+document.addEventListener("visibilitychange", function () {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt > RELOAD_AFTER_MINUTES * 60 * 1000) location.reload();
+  hiddenAt = 0;
+});
 </script>
 </body>
 </html>
